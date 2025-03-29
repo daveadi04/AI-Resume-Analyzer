@@ -1,0 +1,36 @@
+{
+  "name": "ai-personal-branding-assistant",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@headlessui/react": "^1.7.15",
+    "@heroicons/react": "^2.0.18",
+    "axios": "^1.4.0",
+    "chart.js": "^4.3.3",
+    "next": "13.4.19",
+    "react": "18.2.0",
+    "react-chartjs-2": "^5.2.0",
+    "react-dom": "18.2.0",
+    "react-markdown": "^8.0.7",
+    "react-syntax-highlighter": "^15.5.0",
+    "react-toastify": "^9.1.3",
+    "zustand": "^4.3.8"
+  },
+  "devDependencies": {
+    "@types/node": "^20.17.28",
+    "@types/react": "^18.3.20",
+    "@types/react-dom": "^18.2.7",
+    "autoprefixer": "^10.4.21",
+    "eslint": "^8.47.0",
+    "eslint-config-next": "13.4.19",
+    "postcss": "^8.5.3",
+    "tailwindcss": "^4.0.17",
+    "typescript": "^5.1.6"
+  }
+}

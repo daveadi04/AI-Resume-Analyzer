@@ -1,0 +1,57 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  @apply bg-gradient-to-b from-blue-600 to-blue-900 text-white;
+}
+
+/* Main container */
+.container {
+  @apply max-w-6xl mx-auto px-6 py-12;
+}
+
+/* Header Styling */
+h1 {
+  @apply text-5xl font-extrabold text-white drop-shadow-lg;
+}
+
+p {
+  @apply text-lg text-blue-200;
+}
+
+/* Card Styling */
+.card {
+  @apply bg-white rounded-2xl p-6 shadow-lg border border-blue-200 transition-all duration-300;
+}
+
+.card:hover {
+  @apply shadow-2xl transform scale-105 border-blue-400;
+}
+
+/* Links Styling */
+a {
+  @apply block p-4 rounded-lg text-gray-800 font-medium transition-colors duration-300;
+}
+
+a:hover {
+  @apply text-blue-600;
+}
+
+/* How It Works Section */
+section {
+  @apply mt-12;
+}
+
+h2 {
+  @apply text-3xl font-bold text-white;
+}
+
+h3 {
+  @apply text-xl font-semibold text-white;
+}
+
+/* Icons */
+.text-3xl {
+  @apply text-white drop-shadow-md;
+}
