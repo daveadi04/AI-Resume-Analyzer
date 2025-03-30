@@ -9,11 +9,16 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.0",
     "@headlessui/react": "^1.7.15",
     "@heroicons/react": "^2.0.18",
+    "@mui/icons-material": "^7.0.1",
+    "@mui/material": "^7.0.1",
     "axios": "^1.4.0",
     "chart.js": "^4.3.3",
     "next": "13.4.19",
+    "openai": "^4.90.0",
     "react": "18.2.0",
     "react-chartjs-2": "^5.2.0",
     "react-dom": "18.2.0",

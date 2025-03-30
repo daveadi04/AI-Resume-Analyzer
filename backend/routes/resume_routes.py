@@ -1,8 +1,11 @@
-from flask import Blueprint, request, jsonify
-from werkzeug.utils import secure_filename
+from flask import Blueprint, request, jsonify # type: ignore
+from werkzeug.utils import secure_filename # type: ignore
 import os
 from services.resume_service import ResumeService
 from config import Config
+
+# Create uploads directory if it doesn't exist
+os.makedirs(Config.UPLOAD_FOLDER, exist_ok=True)
 
 # Change the blueprint name to match the import
 resume_bp = Blueprint('resume', __name__)
@@ -17,6 +20,8 @@ def analyze_resume():
         return jsonify({'error': 'No file provided'}), 400
     
     file = request.files['resume']
+    job_description = request.form.get('job_description', '')
+    
     if file.filename == '':
         return jsonify({'error': 'No file selected'}), 400
     
@@ -24,14 +29,36 @@ def analyze_resume():
         # Check file type
         allowed_extensions = {'pdf', 'doc', 'docx'}
         if not '.' in file.filename or file.filename.rsplit('.', 1)[1].lower() not in allowed_extensions:
-            return jsonify({'error': 'Invalid file type. Please upload a PDF or DOC file.'}), 400
+            return jsonify({'error': 'Invalid file type. Please upload a PDF, DOC, or DOCX file.'}), 400
 
+        # Create a secure filename and ensure the path exists
         filename = secure_filename(file.filename)
-        filepath = os.path.join(Config.UPLOAD_FOLDER, filename)
+        filepath = os.path.join(os.path.abspath(Config.UPLOAD_FOLDER), filename)
+        
+        # Ensure the directory exists
+        os.makedirs(os.path.dirname(filepath), exist_ok=True)
+        
+        # Save the file
         file.save(filepath)
         
-        result = resume_service.analyze_resume(filepath)
-        return jsonify(result)
+        try:
+            result = resume_service.analyze_resume(filepath, job_description)
+            
+            # Clean up the uploaded file after analysis
+            try:
+                os.remove(filepath)
+            except:
+                pass  # Ignore cleanup errors
+                
+            return jsonify(result)
+        except Exception as e:
+            # Clean up the uploaded file in case of analysis error
+            try:
+                os.remove(filepath)
+            except:
+                pass
+            raise e
+            
     except Exception as e:
         print(f"Error analyzing resume: {str(e)}")
         return jsonify({'error': str(e)}), 500

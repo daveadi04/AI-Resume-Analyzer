@@ -4,6 +4,9 @@ from dotenv import load_dotenv
 load_dotenv()
 
 class Config:
+    # Base directory
+    BASE_DIR = os.path.abspath(os.path.dirname(__file__))
+    
     # API Keys
     OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
     LINKEDIN_API_KEY = os.getenv('LINKEDIN_API_KEY')
@@ -23,7 +26,7 @@ class Config:
     
     # File Upload Settings
     MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16MB max file size
-    UPLOAD_FOLDER = 'uploads'
+    UPLOAD_FOLDER = os.path.join(BASE_DIR, 'uploads')
     ALLOWED_EXTENSIONS = {'pdf', 'doc', 'docx', 'txt'}
     
     # API Rate Limiting
