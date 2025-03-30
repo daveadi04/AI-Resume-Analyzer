@@ -10,19 +10,18 @@ def generate_questions():
     """
     Endpoint for generating interview questions
     """
-    data = request.get_json()
-    if not data or 'job_description' not in data:
-        return jsonify({'error': 'Job description is required'}), 400
-    
     try:
-        result = interview_service.generate_questions(
-            job_description=data['job_description'],
-            difficulty=data.get('difficulty', 'medium'),
-            count=data.get('count', 10)
-        )
+        data = request.get_json()
+        job_description = data.get('job_description')
+        difficulty = data.get('difficulty', 'medium')
+        
+        if not job_description:
+            return jsonify({'error': 'Job description is required'}), 400
+            
+        result = interview_service.generate_questions(job_description, difficulty)
         return jsonify(result)
+        
     except Exception as e:
-        print(f"Error generating questions: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
 @interview_bp.route('/generate-answers', methods=['POST'])
@@ -30,18 +29,19 @@ def generate_answers():
     """
     Endpoint for generating sample answers
     """
-    data = request.get_json()
-    if not data or 'question' not in data:
-        return jsonify({'error': 'Question is required'}), 400
-    
     try:
-        result = interview_service.generate_answer(
-            question=data['question'],
-            context=data.get('context', '')
-        )
+        data = request.get_json()
+        question = data.get('question')
+        job_context = data.get('job_context')
+        difficulty = data.get('difficulty', 'medium')
+        
+        if not question:
+            return jsonify({'error': 'Question is required'}), 400
+            
+        result = interview_service.generate_answers(question, job_context, difficulty)
         return jsonify(result)
+        
     except Exception as e:
-        print(f"Error generating answer: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
 @interview_bp.route('/mock-interview', methods=['POST'])
@@ -65,19 +65,23 @@ def mock_interview():
 
 @interview_bp.route('/analyze-response', methods=['POST'])
 def analyze_response():
-    data = request.get_json()
-    if not data or 'response' not in data or 'question' not in data:
-        return jsonify({"error": "Response and question are required"}), 400
-    
+    """
+    Endpoint for analyzing a response
+    """
     try:
-        analysis = interview_service.analyze_response(
-            response=data['response'],
-            question=data['question'],
-            job_context=data.get('job_context', {})
-        )
-        return jsonify(analysis)
+        data = request.get_json()
+        response = data.get('response')
+        question = data.get('question')
+        job_context = data.get('job_context')
+        
+        if not response or not question:
+            return jsonify({'error': 'Response and question are required'}), 400
+            
+        result = interview_service.analyze_response(response, question, job_context)
+        return jsonify(result)
+        
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({'error': str(e)}), 500
 
 @interview_bp.route('/generate-feedback', methods=['POST'])
 def generate_feedback():

@@ -1,259 +1,192 @@
-import openai
-from config import Config
 import json
+import requests
+import logging
 
-openai.api_key = Config.OPENAI_API_KEY
+# Configure logging
+logging.basicConfig(
+    filename="debug.log",
+    level=logging.DEBUG,
+    format="%(asctime)s - %(levelname)s - %(message)s"
+)
 
 class InterviewService:
-    def __init__(self):
-        self.model = Config.OPENAI_MODEL
-        self.temperature = Config.OPENAI_TEMPERATURE
+    API_URL = "https://api.perplexity.ai/chat/completions"
 
-    def generate_questions(self, job_description, difficulty='medium', num_questions=10):
-        """Generate interview questions based on job description"""
-        prompt = f"""
-        Generate {num_questions} interview questions for this job:
-        {job_description}
+    def __init__(self, api_key: str):
+        """Initialize the service with API key and default parameters."""
+        if not api_key:
+            raise ValueError("API key is required.")
         
-        Difficulty level: {difficulty}
-        
-        Include:
-        1. Technical questions
-        2. Behavioral questions
-        3. Problem-solving questions
-        4. Role-specific questions
-        
-        Format each question with:
-        - Question text
-        - Difficulty level
-        - Category
-        - Key points to address
-        """
-        
-        response = openai.ChatCompletion.create(
-            model=self.model,
-            messages=[
+        self.api_key = api_key
+        self.model = "sonar-pro"
+        self.temperature = 0.3
+
+    def _send_request(self, prompt: str, max_tokens: int = 500):
+        """Helper function to send API requests and handle responses."""
+        payload = {
+            "model": self.model,
+            "messages": [
                 {"role": "system", "content": "You are an expert technical interviewer."},
                 {"role": "user", "content": prompt}
             ],
-            temperature=self.temperature
-        )
-        
-        return {
-            "questions": self._parse_questions(response.choices[0].message.content),
-            "categories": self._extract_categories(job_description)
+            "max_tokens": max_tokens,
+            "temperature": self.temperature
+        }
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json"
         }
 
-    def generate_answers(self, question, job_context, difficulty='medium'):
-        """Generate sample answers for an interview question"""
+        try:
+            response = requests.post(self.API_URL, json=payload, headers=headers)
+            response.raise_for_status()  # Raise an error for HTTP failures
+
+            response_json = response.json()
+            logging.info("API Response: %s", json.dumps(response_json, indent=2))
+
+            if "choices" not in response_json or not response_json["choices"]:
+                raise ValueError("Invalid API response: Missing 'choices' key or empty response.")
+
+            content = response_json["choices"][0].get("message", {}).get("content", "").strip()
+
+            if not content:
+                raise ValueError("API returned an empty response.")
+
+            return content
+
+        except requests.RequestException as e:
+            logging.error("API request failed: %s", str(e))
+            raise Exception(f"API request error: {str(e)}")
+        except json.JSONDecodeError:
+            logging.error("Failed to parse JSON response from API.")
+            raise ValueError("Invalid JSON response from API.")
+
+    def generate_questions(self, job_description: str, difficulty: str = 'medium', num_questions: int = 5):
+        """Generate interview questions based on job description."""
+        if not job_description:
+            raise ValueError("Job description is required.")
+
         prompt = f"""
-        Generate sample answers for this interview question:
-        Question: {question}
-        
-        Job Context: {json.dumps(job_context, indent=2)}
-        Difficulty: {difficulty}
-        
-        Provide:
-        1. A strong answer
-        2. A weak answer
-        3. Key points to include
-        4. Common pitfalls to avoid
-        """
-        
-        response = openai.ChatCompletion.create(
-            model=self.model,
-            messages=[
-                {"role": "system", "content": "You are an expert interview coach."},
-                {"role": "user", "content": prompt}
-            ],
-            temperature=self.temperature
-        )
-        
-        return {
-            "answers": self._parse_answers(response.choices[0].message.content),
-            "tips": self._generate_tips(question, difficulty)
-        }
+        Given this job description:
+        {job_description}
 
-    def analyze_response(self, response, question, job_context):
-        """Analyze an interview response"""
+        Generate {num_questions} interview questions at {difficulty} difficulty level.
+        Format response as JSON:
+        {{
+            "questions": ["Question 1", "Question 2", ...]
+        }}
+        """
+
+        response_text = self._send_request(prompt)
+
+        try:
+            result = json.loads(response_text)
+        except json.JSONDecodeError:
+            logging.error("Invalid JSON format in API response.")
+            raise ValueError("API returned an invalid JSON response.")
+
+        if not isinstance(result, dict) or "questions" not in result:
+            logging.error("Unexpected response format: %s", result)
+            raise ValueError("Unexpected API response format.")
+
+        return result["questions"]
+
+    def generate_answers(self, question: str, job_context: str):
+        """Generate sample answers for a given interview question."""
+        if not question:
+            raise ValueError("Question is required.")
+        if not job_context:
+            raise ValueError("Job context is required.")
+
+        prompt = f"""
+        Given this interview question:
+        {question}
+
+        Job Context:
+        {job_context}
+
+        Generate a strong sample answer.
+        Format response as JSON:
+        {{
+            "strong_answer": "Your detailed answer"
+        }}
+        """
+
+        response_text = self._send_request(prompt)
+
+        try:
+            result = json.loads(response_text)
+        except json.JSONDecodeError:
+            logging.error("Invalid JSON format in API response.")
+            raise ValueError("API returned an invalid JSON response.")
+
+        if not isinstance(result, dict) or "strong_answer" not in result:
+            logging.error("Unexpected response format: %s", result)
+            raise ValueError("Unexpected API response format.")
+
+        return result["strong_answer"]
+
+    def analyze_response(self, response: str, question: str, job_context: str):
+        """Analyze an interview response and provide feedback."""
+        if not response:
+            raise ValueError("Response is required.")
+        if not question:
+            raise ValueError("Question is required.")
+        if not job_context:
+            raise ValueError("Job context is required.")
+
         prompt = f"""
         Analyze this interview response:
         Question: {question}
         Response: {response}
-        Job Context: {json.dumps(job_context, indent=2)}
-        
-        Provide:
-        1. Strengths
-        2. Areas for improvement
-        3. Missing key points
-        4. Overall effectiveness score
+        Job Context: {job_context}
+
+        Provide a detailed analysis and score.
+        Format response as JSON:
+        {{
+            "analysis": "Detailed feedback",
+            "score": 85
+        }}
         """
-        
-        response = openai.ChatCompletion.create(
-            model=self.model,
-            messages=[
-                {"role": "system", "content": "You are an expert interview response analyzer."},
-                {"role": "user", "content": prompt}
-            ],
-            temperature=self.temperature
-        )
-        
+
+        response_text = self._send_request(prompt)
+
+        try:
+            result = json.loads(response_text)
+        except json.JSONDecodeError:
+            logging.error("Invalid JSON format in API response.")
+            raise ValueError("API returned an invalid JSON response.")
+
+        if not isinstance(result, dict) or "analysis" not in result or "score" not in result:
+            logging.error("Unexpected response format: %s", result)
+            raise ValueError("Unexpected API response format.")
+
         return {
-            "analysis": response.choices[0].message.content,
-            "score": self._calculate_score(response.choices[0].message.content),
-            "suggestions": self._generate_suggestions(response.choices[0].message.content)
+            "analysis": result["analysis"],
+            "score": result["score"]
         }
 
-    def generate_feedback(self, interview_data, job_context):
-        """Generate comprehensive interview feedback"""
-        prompt = f"""
-        Generate comprehensive feedback for this interview:
-        Interview Data: {json.dumps(interview_data, indent=2)}
-        Job Context: {json.dumps(job_context, indent=2)}
-        
-        Include:
-        1. Overall performance assessment
-        2. Strengths and weaknesses
-        3. Specific improvement areas
-        4. Action items for preparation
-        """
-        
-        response = openai.ChatCompletion.create(
-            model=self.model,
-            messages=[
-                {"role": "system", "content": "You are an expert interview feedback provider."},
-                {"role": "user", "content": prompt}
-            ],
-            temperature=self.temperature
-        )
-        
-        return {
-            "feedback": response.choices[0].message.content,
-            "action_items": self._extract_action_items(response.choices[0].message.content),
-            "preparation_plan": self._generate_preparation_plan(response.choices[0].message.content)
-        }
+# Example Usage:
+if __name__ == "__main__":
+    API_KEY = "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"  # Replace with your actual API key
+    interview_service = InterviewService(API_KEY)
 
-    def _parse_questions(self, content):
-        """Parse generated questions into structured format"""
-        # In a real implementation, this would properly parse the content
-        questions = content.split('\n\n')
-        return [q.strip() for q in questions if q.strip()]
+    job_description = """
+    We are looking for a Senior Python Developer with expertise in Django, REST APIs, and cloud services.
+    The candidate should have experience in microservices architecture and database management.
+    """
 
-    def _parse_answers(self, content):
-        """Parse generated answers into structured format"""
-        # In a real implementation, this would properly parse the content
-        answers = content.split('\n\n')
-        return [a.strip() for a in answers if a.strip()]
+    try:
+        questions = interview_service.generate_questions(job_description, difficulty="hard", num_questions=3)
+        print("Generated Questions:", questions)
 
-    def _extract_categories(self, job_description):
-        """Extract question categories from job description"""
-        prompt = f"""
-        Extract relevant interview question categories for this job:
-        {job_description}
-        
-        Return as a comma-separated list.
-        """
-        
-        response = openai.ChatCompletion.create(
-            model=self.model,
-            messages=[
-                {"role": "system", "content": "You are an expert job analyst."},
-                {"role": "user", "content": prompt}
-            ],
-            temperature=0.3
-        )
-        
-        return response.choices[0].message.content.split(',')
+        # Generate an answer for the first question
+        sample_answer = interview_service.generate_answers(questions[0], job_description)
+        print("Sample Answer:", sample_answer)
 
-    def _generate_tips(self, question, difficulty):
-        """Generate tips for answering a question"""
-        prompt = f"""
-        Generate tips for answering this interview question:
-        Question: {question}
-        Difficulty: {difficulty}
-        
-        Include:
-        1. Key points to remember
-        2. Common mistakes to avoid
-        3. Structure suggestions
-        """
-        
-        response = openai.ChatCompletion.create(
-            model=self.model,
-            messages=[
-                {"role": "system", "content": "You are an expert interview coach."},
-                {"role": "user", "content": prompt}
-            ],
-            temperature=0.3
-        )
-        
-        return response.choices[0].message.content.split('\n')
+        # Analyze a response
+        analysis = interview_service.analyze_response(sample_answer, questions[0], job_description)
+        print("Response Analysis:", analysis)
 
-    def _calculate_score(self, analysis):
-        """Calculate an effectiveness score from analysis"""
-        # In a real implementation, this would use more sophisticated scoring
-        return 85  # Simulated score
-
-    def _generate_suggestions(self, analysis):
-        """Generate improvement suggestions from analysis"""
-        prompt = f"""
-        Generate specific improvement suggestions based on this analysis:
-        {analysis}
-        
-        Focus on actionable items.
-        """
-        
-        response = openai.ChatCompletion.create(
-            model=self.model,
-            messages=[
-                {"role": "system", "content": "You are an expert interview coach."},
-                {"role": "user", "content": prompt}
-            ],
-            temperature=0.3
-        )
-        
-        return response.choices[0].message.content.split('\n')
-
-    def _extract_action_items(self, feedback):
-        """Extract action items from feedback"""
-        prompt = f"""
-        Extract specific action items from this feedback:
-        {feedback}
-        
-        Return as a numbered list.
-        """
-        
-        response = openai.ChatCompletion.create(
-            model=self.model,
-            messages=[
-                {"role": "system", "content": "You are an expert action planner."},
-                {"role": "user", "content": prompt}
-            ],
-            temperature=0.3
-        )
-        
-        return response.choices[0].message.content.split('\n')
-
-    def _generate_preparation_plan(self, feedback):
-        """Generate a preparation plan based on feedback"""
-        prompt = f"""
-        Create a detailed preparation plan based on this feedback:
-        {feedback}
-        
-        Include:
-        1. Daily tasks
-        2. Resources to study
-        3. Practice exercises
-        4. Timeline
-        """
-        
-        response = openai.ChatCompletion.create(
-            model=self.model,
-            messages=[
-                {"role": "system", "content": "You are an expert interview preparation planner."},
-                {"role": "user", "content": prompt}
-            ],
-            temperature=0.3
-        )
-        
-        return response.choices[0].message.content 
+    except Exception as e:
+        print("Error:", str(e))

@@ -17,14 +17,15 @@ load_dotenv()
 
 app = Flask(__name__)
 
-# Enable CORS for all routes
+# Enable CORS for all routes with proper configuration
 CORS(app, 
      resources={
          r"/*": {
-             "origins": ["http://localhost:3000", "http://localhost:3001", "http://localhost:3002", "http://localhost:3003"],
+             "origins": ["http://localhost:3000", "http://localhost:3001", "http://localhost:3002"],
              "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
              "allow_headers": ["Content-Type", "Authorization", "Accept"],
-             "supports_credentials": True
+             "supports_credentials": True,
+             "max_age": 3600
          }
      })
 

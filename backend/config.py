@@ -21,7 +21,7 @@ class Config:
     JWT_SECRET_KEY = os.getenv('JWT_SECRET_KEY', 'your-jwt-secret-key')
     
     # OpenAI Settings
-    OPENAI_MODEL = "gpt-4"
+    OPENAI_MODEL = "gpt-3.5-turbo"
     OPENAI_TEMPERATURE = 0.7
     
     # File Upload Settings
