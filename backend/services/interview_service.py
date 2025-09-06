@@ -1,6 +1,11 @@
+import os
 import json
-import requests
+import requests # type: ignore
 import logging
+from dotenv import load_dotenv # type: ignore
+
+# Load environment variables from .env
+load_dotenv()
 
 # Configure logging
 logging.basicConfig(
@@ -168,7 +173,7 @@ class InterviewService:
 
 # Example Usage:
 if __name__ == "__main__":
-    API_KEY = "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"  # Replace with your actual API key
+    API_KEY = os.getenv("PERPLEXITY_API_KEY")  # Load from environment API removed for security
     interview_service = InterviewService(API_KEY)
 
     job_description = """
